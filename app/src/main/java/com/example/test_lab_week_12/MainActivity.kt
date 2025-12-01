@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.test_lab_week_12.model.Movie
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,14 +22,12 @@ class MainActivity : AppCompatActivity() {
 
         val recyclerView: RecyclerView = findViewById(R.id.movie_list)
 
-
         val movieAdapter = MovieAdapter(object : MovieAdapter.MovieClickListener {
             override fun onMovieClick(movie: Movie) {
                 openMovieDetails(movie)
             }
         })
         recyclerView.adapter = movieAdapter
-
 
         val movieRepository = (application as MovieApplication).movieRepository
         val movieViewModel = ViewModelProvider(
@@ -38,19 +37,24 @@ class MainActivity : AppCompatActivity() {
                 }
             })[MovieViewModel::class.java]
 
-
         lifecycleScope.launch {
-
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-
 
                 launch {
                     movieViewModel.popularMovies.collect { movies ->
+                        val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
 
-                        movieAdapter.addMovies(movies)
+                        val filteredMovies = movies
+                            .filter { movie ->
+                                movie.releaseDate?.startsWith(currentYear) == true
+                            }
+                            .sortedByDescending {
+                                it.popularity
+                            }
+
+                        movieAdapter.addMovies(filteredMovies)
                     }
                 }
-
 
                 launch {
                     movieViewModel.error.collect { error ->
@@ -63,9 +67,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
     }
-
 
     private fun openMovieDetails(movie: Movie) {
         val intent = Intent(this, DetailsActivity::class.java).apply {
